@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    "paths": {
+      "@models/*": [
+        "./src/models/*"
+      ],
+      "@services/*": [
+        "./src/services/*"
+      ],
+      "@routes/*": [
+        "./src/routes/*"
+      ],
+      "@validations/*": [
+        "./src/validations/*"
+      ],
+      "@helpers/*": [
+        "./src/helpers/*"
+      ],
+      "@handlers/*": [
+        "./src/handlers/*"
+      ],
+      "@web/*": [
+        "./src/web/*"
+      ],
+      "@prisma/*": [
+        "./prisma/*"
+      ],
+      "@middlewares/*": [
+        "./src/middlewares/*"
+      ]
+    }
+  }
+}

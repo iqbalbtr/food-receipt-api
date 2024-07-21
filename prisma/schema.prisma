@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id            Int             @id @default(autoincrement())
+  username      String          @unique
+  password      String
+  profile       profile?
+  receipt_liked receipt_liked[]
+  receipt       receipt[]
+  comments      comment[]
+  token         tokens?
+  comment_like  comment_like[]
+}
+
+model profile {
+  id      Int    @id @default(autoincrement())
+  name    String
+  user_id Int    @unique
+  user    users  @relation(fields: [user_id], references: [id])
+}
+
+model tokens {
+  id       Int      @id @default(autoincrement())
+  token    String?
+  loged_at DateTime @default(now())
+  user_id  Int      @unique
+  user     users    @relation(fields: [user_id], references: [id])
+}
+
+model receipt_liked {
+  user        users   @relation(fields: [user_id], references: [id])
+  user_id     Int
+  receipt     receipt @relation(fields: [receipt_id], references: [id])
+  receipt_id  Int
+
+  @@id([receipt_id, user_id])
+}
+
+model receipt {
+  id            Int             @id @default(autoincrement())
+  title         String
+  sub_title     String?
+  content       String
+  creator       users           @relation(fields: [user_id], references: [id])
+  user_id       Int
+  receipt_liked receipt_liked[]
+  comments      comment[]
+}
+
+model comment {
+  id           Int             @id @default(autoincrement())
+  message      String
+  create_at    DateTime        @default(now())
+  reply_status Boolean         @default(false)
+  like         comment_like[]
+  reply        comment_reply[] @relation(name: "ParrentComments")
+  replies      comment_reply[] @relation(name: "ReplyComments")
+  receipt_id   Int
+  receipt      receipt         @relation(fields: [receipt_id], references: [id])
+  user_id      Int
+  user         users           @relation(fields: [user_id], references: [id])
+}
+
+model comment_reply {
+  comment_id Int
+  comment    comment @relation(name: "ParrentComments", fields: [comment_id], references: [id])
+  reply_id   Int
+  reply      comment @relation(name: "ReplyComments", fields: [reply_id], references: [id])
+
+  @@id([comment_id, reply_id])
+}
+
+model comment_like {
+  comment_id Int
+  comment    comment @relation(fields: [comment_id], references: [id])
+  user_id    Int
+  user       users   @relation(fields: [user_id], references: [id])
+
+  @@id([comment_id, user_id])
+}
