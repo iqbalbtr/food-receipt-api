@@ -5,7 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
@@ -23,13 +24,16 @@ model users {
   comments      comment[]
   token         tokens?
   comment_like  comment_like[]
+  bookmarks     bookmarks[]
 }
 
 model profile {
-  id      Int    @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   name    String
-  user_id Int    @unique
-  user    users  @relation(fields: [user_id], references: [id])
+  bio     String?
+  profile String?
+  user_id Int     @unique
+  user    users   @relation(fields: [user_id], references: [id])
 }
 
 model tokens {
@@ -41,10 +45,10 @@ model tokens {
 }
 
 model receipt_liked {
-  user        users   @relation(fields: [user_id], references: [id])
-  user_id     Int
-  receipt     receipt @relation(fields: [receipt_id], references: [id])
-  receipt_id  Int
+  user       users   @relation(fields: [user_id], references: [id])
+  user_id    Int
+  receipt    receipt @relation(fields: [receipt_id], references: [id])
+  receipt_id Int
 
   @@id([receipt_id, user_id])
 }
@@ -53,11 +57,18 @@ model receipt {
   id            Int             @id @default(autoincrement())
   title         String
   sub_title     String?
-  content       String
+  description   String
+  content       String          @db.Text
+  ingredients   String          @db.Text
+  tags          String?
+  create_at     DateTime        @default(now())
   creator       users           @relation(fields: [user_id], references: [id])
   user_id       Int
   receipt_liked receipt_liked[]
   comments      comment[]
+  bookmarks     bookmarks[]
+
+  @@fulltext([tags, title])
 }
 
 model comment {
@@ -90,4 +101,14 @@ model comment_like {
   user       users   @relation(fields: [user_id], references: [id])
 
   @@id([comment_id, user_id])
+}
+
+model bookmarks {
+  user_id    Int
+  user       users    @relation(fields: [user_id], references: [id])
+  receipt_id Int
+  add_at     DateTime @default(now())
+  receipts   receipt  @relation(fields: [receipt_id], references: [id])
+
+  @@id([user_id, receipt_id])
 }

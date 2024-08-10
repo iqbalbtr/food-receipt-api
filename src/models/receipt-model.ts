@@ -1,14 +1,12 @@
 export type createReceiptType = {
     title: string,
-    sub_title: string,
-    content: string
+    description: string;
+    sub_title?: string,
+    contents: string,
+    ingredients: string,
+    tags?: string
 }
 
-export type updateReceiptType = {
-    title: string,
-    sub_title?: string,
-    content?: string
-}
 
 export type ReceiptType = {
     id: number;

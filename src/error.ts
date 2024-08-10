@@ -1,18 +1,34 @@
 import { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { HTTPResponseError } from "hono/types";
+import { BlankEnv, HTTPResponseError } from "hono/types";
 import { ZodError } from "zod"
 
-export default async (err: Error | HTTPResponseError, c: Context) => {
-
-    console.error(err);
+export default async (err: Error | HTTPResponseError, c: Context<BlankEnv, any, {}>) => {
+    
     if (err instanceof HTTPException) {
-        return err.getResponse()
+        return c.json({
+            message: err.status === 401 ? "Unauthorized" : err.message
+        }, err.status)
     } else if (err instanceof ZodError) {
-        return c.text("Err")
+        console.log(err);
+        
+        return c.json({
+            message: `${err.errors[0].path[0]} field ${err.errors[0].message}`
+        }, 400)
     } else {
-        // throw new HTTPException(500, {message: "Internal server error"})
-        return c.json(err)
+        return c.json({
+            message: "Internal server error"
+        }, 500)
     }
 
+}
+
+export const zodValidationError = (err: any, c: Context) => {
+    console.log(err);
+    
+    if (err.error) {
+        throw new HTTPException(400, {
+            message: `${err.error[0].path[0]} field ${err.error[0].message}`
+        });
+    }
 }

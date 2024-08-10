@@ -31,7 +31,7 @@ export const loginUser = async (req: LoginType) => {
         }
     )
 
-    return db.tokens.update({
+    const tokens = db.tokens.update({
         where: {
             user_id: isUser.id
         },
@@ -50,6 +50,14 @@ export const loginUser = async (req: LoginType) => {
             }
         }
     })
+
+    return {
+        id: isUser.id,
+        username: isUser.username,
+        name: isUser.profile?.name,
+        bio: isUser.profile?.bio,
+        token: (await tokens).token
+    }
 }
 
 export const registerUser = async (req: RegisterType) => {
@@ -81,6 +89,32 @@ export const registerUser = async (req: RegisterType) => {
                     name: true
                 }
             }
+        }
+    })
+}
+
+export const logout = async(token: string, userId: number) => {
+    
+    if(!token)
+        throw new HTTPException(400, {message: "Token is not found"});
+
+    const isExist = await db.tokens.count({
+        where: {
+            token: token,
+            user_id: userId
+        }
+    })
+
+    if (isExist === 0)
+        throw new HTTPException(404, {message: "Token is not found"})
+    
+    return db.tokens.update({
+        where: {
+            token: token,
+            user_id: userId
+        },
+        data: {
+            token: ""
         }
     })
 }

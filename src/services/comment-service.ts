@@ -1,21 +1,43 @@
 import { commentExist, deleteCommentRecursively } from "@helpers/comment-helper"
+import { CommentQueryType } from "@models/query-model"
 import db from "@prisma/index"
 import { HTTPException } from "hono/http-exception"
 
 export const createComment = async (req: any, receiptId: number, userId: number) => {
 
-    return db.comment.create({
+    const result = await db.comment.create({
         data: {
             message: req.message,
             receipt_id: receiptId,
             user_id: userId
+        },
+        include: {
+            user: true
         }
     })
+
+    return {
+        id: result.id,
+        message: result.message,
+        user: {
+            username: result.user.username,
+            id: result.user.id
+        },
+        create_at: result.create_at,
+        like: {
+            count: 0,
+            status: false
+        },
+        reply: {
+            link: `${process.env.BASE_URL}/api/receipt/8/comment/6`,
+            count: 0
+        }
+    }
 }
 
 export const replyComment = async (req: any, commentId: number, receiptId: number, userId: number) => {
 
-    const isExist = commentExist(commentId)
+    const isExist = await commentExist(commentId)
 
     if (!isExist)
         throw new HTTPException(404, { message: "Comment is not found" });
@@ -27,6 +49,9 @@ export const replyComment = async (req: any, commentId: number, receiptId: numbe
                 receipt_id: receiptId,
                 user_id: userId,
                 reply_status: true
+            },
+            include: {
+                user: true
             }
         })
 
@@ -41,7 +66,23 @@ export const replyComment = async (req: any, commentId: number, receiptId: numbe
         return reply
     })
 
-    return result
+    return {
+        id: result.id,
+        message: result.message,
+        user: {
+            username: result.user.username,
+            id: result.user.id,
+        },
+        create_at: result.create_at,
+        like: {
+            count: 0,
+            status: false
+        },
+        reply: {
+            link: `${process.env.BASE_URL}/api/receipt/8/comment/6`,
+            count: 0
+        }
+    }
 }
 
 export const updateComment = async (req: any, commentId: number) => {
@@ -93,7 +134,19 @@ export const deleteComment = async (commentId: number) => {
     return deleteCommentRecursively(commentId)
 }
 
-export const getComment = async (receiptId: number) => {
+export const getComment = async (receiptId: number, req: CommentQueryType, userId: number) => {
+
+    const count = await db.comment.count({
+        where: {
+            receipt_id: receiptId,
+            reply_status: false
+        }
+    });
+
+    const take = req.take ?? 10;
+    const page = req.page ?? 1;
+    const skip = (page - 1) * take;
+
     const result = await db.comment.findMany({
         where: {
             receipt_id: receiptId,
@@ -104,6 +157,7 @@ export const getComment = async (receiptId: number) => {
             message: true,
             user: {
                 select: {
+                    id: true,
                     username: true
                 }
             },
@@ -115,27 +169,50 @@ export const getComment = async (receiptId: number) => {
                     comment_id: true
                 }
             }
-        }
-    })
+        },
+        skip: skip,
+        take: take
+    });
 
-    if (result.length === 0)
-        throw new HTTPException(404, { message: "Comment is not found" })
-
-
-    return result.map(fo => ({
-        id: fo.id,
-        message: fo.message,
-        user: fo.user.username,
-        create_at: fo.create_at,
-        like_count: fo.like.length,
-        reply: {
-            link: `${process.env.BASE_URL}/api/receipt/${receiptId}/comment/${fo.id}`,
-            count: fo.reply.length
-        }
-    }))
+    return {
+        pageCount: Math.ceil(count / take),
+        itemcCount: count,
+        page: page,
+        take: take,
+        list: result.map(fo => ({
+            id: fo.id,
+            message: fo.message,
+            user: {
+                id: fo.user.id,
+                username: fo.user.username
+            },
+            create_at: fo.create_at,
+            like: {
+                count: fo.like.length,
+                status: fo.like.find(fo => fo.user_id === userId)
+            },
+            reply: {
+                link: `${process.env.BASE_URL}/api/receipt/${receiptId}/comment/${fo.id}`,
+                count: fo.reply.length
+            }
+        }))
+    }
 }
 
-export const getReplyComment = async (commentId: number, receiptId: number) => {
+
+
+export const getReplyComment = async (commentId: number, receiptId: number, req: CommentQueryType, userId: number) => {
+
+    const count = await db.comment_reply.count({
+        where: {
+            comment_id: commentId
+        }
+    });
+
+    const take = req.take ?? 10;
+    const page = req.page ?? 1;
+    const skip = (page - 1) * take;
+
     const result = await db.comment_reply.findMany({
         where: {
             comment_id: commentId
@@ -147,6 +224,7 @@ export const getReplyComment = async (commentId: number, receiptId: number) => {
                     message: true,
                     user: {
                         select: {
+                            id: true,
                             username: true
                         }
                     },
@@ -160,20 +238,29 @@ export const getReplyComment = async (commentId: number, receiptId: number) => {
                     }
                 }
             }
-        }
-    })
+        },
+        skip: skip,
+        take: take
+    });
 
-    if (result.length === 0)
-        throw new HTTPException(404, { message: "Comment is not found" })
 
     return {
-        comment_id: commentId,
-        comment: result.map(fo => ({
+        pageCount: Math.ceil(count / take),
+        itemCount: count,
+        page: page,
+        take: take,
+        list: result.map(fo => ({
             id: fo.reply.id,
             message: fo.reply.message,
-            user: fo.reply.user.username,
+            user: {
+                id: fo.reply.user.id,
+                username: fo.reply.user.username
+            },
             create_at: fo.reply.create_at,
-            like_count: fo.reply.like.length,
+            like: {
+                count: fo.reply.like.length,
+                status: fo.reply.like.find(fo => fo.user_id === userId)
+            },
             reply: {
                 link: `${process.env.BASE_URL}/api/receipt/${receiptId}/comment/${fo.reply.id}`,
                 count: fo.reply.reply.length
@@ -182,7 +269,7 @@ export const getReplyComment = async (commentId: number, receiptId: number) => {
     }
 }
 
-export const likeComment = async(commentId: number, userId: number) => {
+export const likeComment = async (commentId: number, userId: number) => {
     const isLike = await db.comment_like.findFirst({
         where: {
             comment_id: commentId,

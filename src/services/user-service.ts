@@ -4,19 +4,36 @@ import { HTTPException } from "hono/http-exception";
 import { password } from "bun";
 
 export const getUserByid = async (userId: number) => {
+    
     const isUser = await userExist(userId);
 
+    const post = await db.receipt.findMany({
+        where: {
+            creator: {
+                id: isUser?.id
+            }
+        },
+        select: {
+            receipt_liked: true
+        }
+    })
+    
     if (!isUser)
         throw new HTTPException(404, { message: "User is not found" });
 
     return {
         id: isUser.id,
         username: isUser.username,
-        name: isUser.profile?.name
+        name: isUser.profile?.name,
+        bio: isUser.profile?.bio,
+        info: {
+            post: post.length,
+            likes: post.reduce((sum, acc) => sum += acc.receipt_liked.length, 0)
+        }
     }
 }
 
-export const updateUser = async (req: { name: string }, userId: number) => {
+export const updateUser = async (req: { name: string, bio?: string }, userId: number) => {
     const isUser = await userExist(userId);
 
     if (!isUser)
@@ -27,21 +44,23 @@ export const updateUser = async (req: { name: string }, userId: number) => {
             user_id: userId
         },
         data: {
-            name: req.name
+            name: req.name,
+            bio: req.bio
         }
     })
 }
 
 export const changePassword = async (req: { latest: string, pass: string }, userId: number) => {
+
     const isUser = await userExist(userId);
 
     if (!isUser)
         throw new HTTPException(404, { message: "User is not found" });
 
-    const verify = password.verify(req.latest, isUser.password);
+    const verify = await password.verify(req.latest, isUser.password);
 
     if (!verify)
-        throw new HTTPException(400, { message: "Password is wrong" })
+        throw new HTTPException(401, { message: "Password is wrong" })
 
     const hash = await password.hash(req.pass, { algorithm: "bcrypt" });
 
@@ -51,6 +70,23 @@ export const changePassword = async (req: { latest: string, pass: string }, user
         },
         data: {
             password: hash
+        }
+    })
+}
+
+export const updatePhotoProfile = async(userId: number) => {
+    
+    const isUser = await userExist(userId);
+
+    if (!isUser)
+        throw new HTTPException(404, { message: "User is not found" });
+    
+    return db.profile.update({
+        where: {
+            user_id: userId
+        },
+        data: {
+            profile: `${process.env.BASE_URL}/public/profile/user_${userId}.jpeg`
         }
     })
 }

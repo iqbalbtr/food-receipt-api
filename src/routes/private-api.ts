@@ -20,7 +20,7 @@ privateApi.use(
 );
 
 privateApi.route("/user", userHandler)
-privateApi.route("/receipt", receiptHandler)
-privateApi.route("/receipt", commentHandler)
+privateApi.route("/recipes", receiptHandler)
+privateApi.route("/recipes", commentHandler)
 
 export default privateApi

@@ -8,8 +8,8 @@
 #### Request
 ```json
 {
-    "username" : "jhondea",
-    "password" : "admin#1234"
+    "message" : "Halo Comment",
+    "assigned" : ""
 }
 ```
 
